@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="eaa797aa-d6f2-4620-8d32-a5ab8cbd0be9" name="Fluid">
+        <fileTransfer rootFolder="/container/application/public" accessType="SFTP" host="120.138.27.253" port="22" sshConfigId="fdaedbd7-1cda-43fb-be26-f1153c0fe010" sshConfig="fluidftp231@120.138.27.253:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
