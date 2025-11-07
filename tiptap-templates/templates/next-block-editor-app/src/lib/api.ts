@@ -202,7 +202,7 @@ export class API {
   }
 
   // this one used to check if this file is exist in the database
-  public static getFileInfo = async (room: string) => {
+  public static getFileInfo = async (room: string, appId: string) => {
 
     const credential = getCredential();
 
@@ -210,7 +210,7 @@ export class API {
       throw new Error('Unauthorized access (401). Please log in again or contact the administrator.');
     }
 
-    const response = await fetch(`/api_document/file?room=${room}`, {
+    const response = await fetch(`/api_document/file?room=${room}&appId=${appId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

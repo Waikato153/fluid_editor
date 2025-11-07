@@ -16,6 +16,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { setFileInfo, setFileInfoLoading, setFileInfoError } from '@/lib/slices/fileInfoSlice';
 import { setReadOnly } from '@/lib/slices/editorSlice'
 import { RootState } from '@/lib/store';
+import { TiptapCollabProvider } from '@hocuspocus/provider'
+import { Doc as YDoc } from 'yjs'
 
 const useDarkmode = () => {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(
@@ -50,31 +52,66 @@ export default function Document({ params }: { params: { room: string } }) {
   const { isDarkMode, darkMode, lightMode } = useDarkmode()
   const [aiToken, setAiToken] = useState<string | null | undefined>()
   const [convertToken, setConvertToken] = useState<string | null | undefined>()
+  const [fileInfoReady, setFileInfoReady] = useState(false)
   const searchParams = useSearchParams()
   const appId = searchParams?.get('appId') || 'default'
   console.log('App ID:', appId);
 
-  const providerState = useCollaboration({
-    docId: params.room,
-    enabled: parseInt(searchParams?.get('noCollab') as string) !== 1,
-    appId: appId,
-  })
   const { data: fileInfo, loading, error: fileInfoError } = useSelector((state: RootState) => state.fileInfo);
-
 
   const dispatch = useDispatch();
 
+  // 只有 fileInfo 准备好后才实例化 providerState
+  const shouldEnableCollab = fileInfoReady && parseInt(searchParams?.get('noCollab') as string) !== 1
+  
+  const collabState = useCollaboration({
+    docId: params.room,
+    enabled: shouldEnableCollab,
+    appId: appId,
+  })
+
+  // 在 fileInfo 未准备好时，给一个初始状态
+  const providerState: 
+    | { state: 'loading' | 'idle'; provider: null; yDoc: null }
+    | { state: 'loaded'; provider: TiptapCollabProvider; yDoc: YDoc } 
+    = fileInfoReady 
+      ? collabState 
+      : { state: 'idle', provider: null, yDoc: null }
+
+  // 第一步：最高优先级，获取文件信息（包含复制逻辑）
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchFileInfo = async () => {
       try {
+        setFileInfoReady(false); // 标记开始
         dispatch(setFileInfoLoading(true));
         dispatch(setFileInfoError(null));
-        const data = await API.getFileInfo(params.room);
+        
+        // 这里会调用后端 /api_document/file，后端会在返回前完成复制
+        const data = await API.getFileInfo(params.room, appId);
+        
+        if (!isMounted) return;
+        
         dispatch(setFileInfo(data));
+        
+        // ===== 测试断点：检查 Tiptap 文档是否已创建 =====
+        console.log('✅ FileInfo 获取完成，后端复制操作已完成');
+        console.log('📋 返回的数据:', data);
+        console.log('🔍 请现在检查 Tiptap 服务器上是否已存在文档');
+        console.log(`📄 文档 ID: doc_${params.room}`);
+        console.log('⏸️  程序在此暂停，等待你检查...');
+        
+        // 暂停执行，不继续往下走
+        //debugger; // 这会在浏览器开发者工具中触发断点
+        
+        // 下面的代码不会执行，直到你在开发者工具中继续
+        console.log('▶️  继续执行后续逻辑');
+        
       } catch (error) {
+        if (!isMounted) return;
 
         if (error instanceof Error) {
-
           dispatch(setFileInfoError(error.message));
         } else {
           dispatch(setFileInfoError('Unknown error'));
@@ -82,12 +119,19 @@ export default function Document({ params }: { params: { room: string } }) {
 
         dispatch(setFileInfo(null));
       } finally {
+        if (!isMounted) return;
+        
         dispatch(setFileInfoLoading(false));
+        setFileInfoReady(true); // 标记完成，允许后续逻辑执行
       }
     };
 
     fetchFileInfo();
-  }, [params.room, dispatch]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [params.room, appId, dispatch]);
 
 
   useEffect(() => {
@@ -100,8 +144,10 @@ export default function Document({ params }: { params: { room: string } }) {
 
   }, [searchParams, dispatch]);
 
+  // 第二步：只有 fileInfoReady 后才获取 AI token
   useEffect(() => {
-    // fetch data
+    if (!fileInfoReady) return;
+
     const dataFetch = async () => {
       try {
         const response = await fetch('/api_document/ai', {
@@ -130,9 +176,12 @@ export default function Document({ params }: { params: { room: string } }) {
     }
 
     dataFetch()
-  }, [])
+  }, [fileInfoReady])
 
+  // 第三步：只有 fileInfoReady 且 fileInfo 成功后才获取 Convert token
   useEffect(() => {
+    if (!fileInfoReady || !fileInfo || fileInfoError) return;
+
     const dataFetch = async () => {
       try {
         const response = await fetch('/api_document/getConvertToken', {
@@ -156,10 +205,8 @@ export default function Document({ params }: { params: { room: string } }) {
       }
     };
 
-    if (fileInfo && !fileInfoError) {  // 只有在 fileInfo 成功获取后才执行
-      dataFetch();
-    }
-  }, [fileInfo, fileInfoError]);
+    dataFetch();
+  }, [fileInfoReady, fileInfo, fileInfoError]);
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -176,7 +223,7 @@ export default function Document({ params }: { params: { room: string } }) {
     fetchToken();
   }, []);
 
-  if (loading || providerState.state === 'loading' || aiToken === undefined|| !fileInfo || convertToken === undefined) {
+  if (!fileInfoReady || loading || providerState.state === 'loading' || aiToken === undefined|| !fileInfo || convertToken === undefined) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-white dark:bg-black bg-opacity-95 dark:bg-opacity-95 z-1000">
         <div className="flex flex-col items-center gap-4">

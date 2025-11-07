@@ -6,6 +6,7 @@ export interface AppConfig {
   aiSecret?: string;
   convertSecret?: string;
   collabSecret?: string;
+  apiSecret?: string;
 }
 
 // 预定义的App配置
@@ -17,6 +18,7 @@ export const APP_CONFIGS: Record<string, AppConfig> = {
     aiSecret: process.env.TIPTAP_AI_SECRET,
     convertSecret: process.env.TIPTAP_CONVERT_SECRET,
     collabSecret: process.env.TIPTAP_COLLAB_SECRET,
+    apiSecret: process.env.TIPTAP_API_SECRET,
   },
   'app1': {
     id: 'app1',
@@ -25,6 +27,7 @@ export const APP_CONFIGS: Record<string, AppConfig> = {
     aiSecret: process.env.TIPTAP_AI_SECRET_1,
     convertSecret: process.env.TIPTAP_CONVERT_SECRET,
     collabSecret: process.env.TIPTAP_COLLAB_SECRET_1,
+    apiSecret: process.env.TIPTAP_API_SECRET_1,
   },
   // 'app2': {
   //   id: 'app2',
