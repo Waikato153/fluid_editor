@@ -21,7 +21,7 @@ export interface DuplicateDocResult {
 }
 
 /**
- * Tiptap 文档操作工具类
+ * Tiptap document management utility class
  */
 export class TiptapDocManager {
   private appId: string;
@@ -33,16 +33,16 @@ export class TiptapDocManager {
   }
 
   /**
-   * 获取文档的基础 URL
+   * Get the base URL for a document
    */
   private getDocumentUrl(docId: string): string {
     return `https://${this.appConfig.collabAppId}.collab.tiptap.cloud/api/documents/${docId}`;
   }
 
   /**
-   * 检查文档是否存在
-   * @param docId - 文档 ID（如 'doc_xxx'）
-   * @returns 是否存在
+   * Check if a document exists
+   * @param docId - Document ID (e.g. 'doc_xxx')
+   * @returns Whether the document exists
    */
   async exists(docId: string): Promise<boolean> {
     try {
@@ -62,9 +62,9 @@ export class TiptapDocManager {
   }
 
   /**
-   * 获取文档内容
-   * @param docId - 文档 ID（如 'doc_xxx'）
-   * @returns 文档的 Yjs 二进制数据
+   * Get document content
+   * @param docId - Document ID (e.g. 'doc_xxx')
+   * @returns Yjs binary data (includes comments and collaboration data)
    */
   async getDocument(docId: string): Promise<TiptapDocResult> {
     try {
@@ -89,23 +89,23 @@ export class TiptapDocManager {
     } catch (error: any) {
       return {
         success: false,
-        error: error.response?.status === 404 
-          ? 'Document not found' 
+        error: error.response?.status === 404
+          ? 'Document not found'
           : error.message || 'Failed to get document',
       };
     }
   }
 
   /**
-   * 创建或更新文档
-   * @param docId - 文档 ID
-   * @param data - Yjs 二进制数据
-   * @param overwrite - 是否覆盖已存在的文档（使用 PUT）
-   * @returns 是否成功
+   * Create or update a document
+   * @param docId - Document ID
+   * @param data - Yjs binary data
+   * @param overwrite - Whether to overwrite existing document (uses PUT)
+   * @returns Success status
    */
   async saveDocument(
-    docId: string, 
-    data: ArrayBuffer, 
+    docId: string,
+    data: ArrayBuffer,
     overwrite: boolean = false
   ): Promise<TiptapDocResult> {
     try {
@@ -117,14 +117,13 @@ export class TiptapDocManager {
       }
 
       const method = overwrite ? 'put' : 'post';
-      
+
       await axios[method](
-        `${this.getDocumentUrl(docId)}?format=yjs`,
+        `${this.getDocumentUrl(docId)}`,
         data,
         {
           headers: {
             Authorization: this.appConfig.apiSecret,
-            'Content-Type': 'application/octet-stream',
           },
         }
       );
@@ -143,11 +142,65 @@ export class TiptapDocManager {
   }
 
   /**
-   * 复制文档
-   * @param sourceDocId - 源文档 ID（如 'doc_xxx'）
-   * @param targetDocId - 目标文档 ID（如 'doc_yyy'）
-   * @param overwrite - 如果目标已存在，是否覆盖
-   * @returns 复制结果
+   * Update document (incremental update)
+   * Uses PATCH method to apply Yjs update to an existing document
+   * @param docId - Document ID (e.g. 'doc_xxx')
+   * @param updateData - Yjs update binary data
+   * @returns Success status
+   */
+  async updateDocument(
+    docId: string,
+    updateData: ArrayBuffer | Uint8Array
+  ): Promise<TiptapDocResult> {
+    try {
+      if (!this.appConfig.apiSecret) {
+        return {
+          success: false,
+          error: 'API secret is not configured',
+        };
+      }
+
+      const binaryData = updateData instanceof ArrayBuffer ? new Uint8Array(updateData) : updateData;
+
+      await axios.patch(
+        this.getDocumentUrl(docId),
+        binaryData,
+        {
+          headers: {
+            Authorization: this.appConfig.apiSecret,
+            'Content-Type': 'application/octet-stream',
+          },
+        }
+      );
+
+      return {
+        success: true,
+      };
+    } catch (error: any) {
+      const status = error.response?.status;
+      let errorMessage: string;
+
+      if (status === 404) {
+        errorMessage = 'Document not found';
+      } else if (status === 422) {
+        errorMessage = 'Invalid payload or update cannot be applied';
+      } else {
+        errorMessage = error.message || 'Failed to update document';
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Duplicate a document
+   * @param sourceDocId - Source document ID (e.g. 'doc_xxx')
+   * @param targetDocId - Target document ID (e.g. 'doc_yyy')
+   * @param overwrite - Whether to overwrite if target already exists
+   * @returns Duplication result
    */
   async duplicateDocument(
     sourceDocId: string,
@@ -155,12 +208,12 @@ export class TiptapDocManager {
     overwrite: boolean = false
   ): Promise<DuplicateDocResult> {
     try {
-      console.log(`📄 开始复制文档: ${sourceDocId} -> ${targetDocId}`);
+      console.log(`📄 Starting document duplication: ${sourceDocId} -> ${targetDocId}`);
 
-      // 1. 检查源文档是否存在
+      // 1. Check if source document exists
       const sourceExists = await this.exists(sourceDocId);
       if (!sourceExists) {
-        console.error(`❌ 源文档不存在: ${sourceDocId}`);
+        console.error(`❌ Source document does not exist: ${sourceDocId}`);
         return {
           success: false,
           sourceExists: false,
@@ -169,12 +222,12 @@ export class TiptapDocManager {
           error: 'Source document does not exist',
         };
       }
-      console.log(`✅ 源文档存在: ${sourceDocId}`);
+      console.log(`✅ Source document exists: ${sourceDocId}`);
 
-      // 2. 检查目标文档是否存在
+      // 2. Check if target document exists
       const targetExists = await this.exists(targetDocId);
       if (targetExists && !overwrite) {
-        console.warn(`⚠️  目标文档已存在: ${targetDocId}`);
+        console.warn(`⚠️ Target document already exists: ${targetDocId}`);
         return {
           success: false,
           sourceExists: true,
@@ -185,14 +238,14 @@ export class TiptapDocManager {
       }
 
       if (targetExists) {
-        console.log(`🔄 目标文档已存在，将覆盖: ${targetDocId}`);
+        console.log(`🔄 Target document exists, will overwrite: ${targetDocId}`);
       }
 
-      // 3. 获取源文档内容
-      console.log(`📥 正在获取源文档内容...`);
+      // 3. Get source document content
+      console.log(`📥 Fetching source document content...`);
       const getResult = await this.getDocument(sourceDocId);
       if (!getResult.success || !getResult.data) {
-        console.error(`❌ 获取源文档失败:`, getResult.error);
+        console.error(`❌ Failed to get source document:`, getResult.error);
         return {
           success: false,
           sourceExists: true,
@@ -201,13 +254,13 @@ export class TiptapDocManager {
           error: `Failed to get source document: ${getResult.error}`,
         };
       }
-      console.log(`✅ 源文档内容获取成功，大小: ${getResult.data.byteLength} bytes`);
+      console.log(`✅ Source document fetched successfully, size: ${getResult.data.byteLength} bytes`);
 
-      // 4. 保存到目标文档
-      console.log(`📤 正在保存到目标文档...`);
+      // 4. Save to target document
+      console.log(`📤 Saving to target document...`);
       const saveResult = await this.saveDocument(targetDocId, getResult.data, overwrite);
       if (!saveResult.success) {
-        console.error(`❌ 保存目标文档失败:`, saveResult.error);
+        console.error(`❌ Failed to save target document:`, saveResult.error);
         return {
           success: false,
           sourceExists: true,
@@ -217,7 +270,7 @@ export class TiptapDocManager {
         };
       }
 
-      console.log(`✅ 文档复制成功: ${sourceDocId} -> ${targetDocId}`);
+      console.log(`✅ Document duplicated successfully: ${sourceDocId} -> ${targetDocId}`);
       return {
         success: true,
         sourceExists: true,
@@ -225,7 +278,7 @@ export class TiptapDocManager {
         duplicated: true,
       };
     } catch (error: any) {
-      console.error(`❌ 复制文档时发生错误:`, error);
+      console.error(`❌ Error during document duplication:`, error);
       return {
         success: false,
         sourceExists: false,
@@ -237,9 +290,9 @@ export class TiptapDocManager {
   }
 
   /**
-   * 删除文档
-   * @param docId - 文档 ID
-   * @returns 是否成功
+   * Delete a document
+   * @param docId - Document ID
+   * @returns Success status
    */
   async deleteDocument(docId: string): Promise<TiptapDocResult> {
     try {
@@ -271,14 +324,14 @@ export class TiptapDocManager {
 }
 
 /**
- * 创建文档管理器实例
+ * Create a document manager instance
  */
 export const createTiptapDocManager = (options?: TiptapDocOptions) => {
   return new TiptapDocManager(options);
 };
 
 /**
- * 便捷方法：获取文档
+ * Convenience method: Get a document
  */
 export const getTiptapDocument = async (docId: string, appId?: string) => {
   const manager = createTiptapDocManager({ appId });
@@ -286,7 +339,7 @@ export const getTiptapDocument = async (docId: string, appId?: string) => {
 };
 
 /**
- * 便捷方法：复制文档
+ * Convenience method: Duplicate a document
  */
 export const duplicateTiptapDocument = async (
   sourceDocId: string,

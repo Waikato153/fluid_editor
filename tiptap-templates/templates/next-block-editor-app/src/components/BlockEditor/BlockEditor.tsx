@@ -79,6 +79,46 @@ export const BlockEditor = ({
   const [isEditable, setIsEditable] = useState(isReadOnly? false : true)
   const menuContainerRef = useRef(null)
 
+  // Block keyboard shortcuts in readonly mode (Ctrl+A, Ctrl+C, etc.)
+  useEffect(() => {
+    if (!isReadOnly) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Block Ctrl+A (select all), Ctrl+C (copy), Ctrl+X (cut), Ctrl+V (paste)
+      if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'x', 'v'].includes(e.key.toLowerCase())) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+
+    const handleCopy = (e: ClipboardEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    document.addEventListener('keydown', handleKeyDown, true)
+    document.addEventListener('copy', handleCopy, true)
+    document.addEventListener('paste', handlePaste, true)
+    document.addEventListener('contextmenu', handleContextMenu, true)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true)
+      document.removeEventListener('copy', handleCopy, true)
+      document.removeEventListener('paste', handlePaste, true)
+      document.removeEventListener('contextmenu', handleContextMenu, true)
+    }
+  }, [isReadOnly])
+
   const [showUnresolved, setShowUnresolved] = useState(true)
   const [selectedThread, setSelectedThread] = useState(null)
   const [exportModalOpen, setExportModalOpen] = React.useState(false)

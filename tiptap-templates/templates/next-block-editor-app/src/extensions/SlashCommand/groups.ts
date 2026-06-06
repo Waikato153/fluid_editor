@@ -1,4 +1,5 @@
 import { Group } from './types'
+import { API } from '@/lib/api'
 
 export const GROUPS: Group[] = [
   // {
@@ -139,7 +140,19 @@ export const GROUPS: Group[] = [
         description: 'Insert an image',
         aliases: ['img'],
         action: editor => {
-          editor.chain().focus().setImageUpload().run()
+          const input = document.createElement('input')
+          input.type = 'file'
+          input.accept = 'image/png,image/jpeg,image/gif,image/webp'
+          input.onchange = async () => {
+            const file = input.files?.[0]
+            if (file) {
+              const url = await API.uploadImage(file)
+              if (url) {
+                editor.chain().focus().setImage({ src: url }).run()
+              }
+            }
+          }
+          input.click()
         },
       },
       {

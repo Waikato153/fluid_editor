@@ -51,6 +51,7 @@ import {
   Strike,
 } from '.'
 
+import { Image } from './Image'
 import { ImageUpload } from './ImageUpload'
 import { TableOfContentsNode } from './TableOfContentsNode'
 import { isChangeOrigin } from '@tiptap/extension-collaboration'
@@ -121,24 +122,26 @@ export const ExtensionKit = ({ provider }: ExtensionKitProps) => [
     clientId: provider?.document?.clientID,
   }),
   ImageBlock,
+  Image.configure({
+    minWidth: 50,
+    maxWidth: 800,
+  }),
   FileHandler.configure({
     allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
     onDrop: (currentEditor, files, pos) => {
       files.forEach(async file => {
         const url = await API.uploadImage(file)
-
-        currentEditor.chain().setImageBlockAt({ pos, src: url }).focus().run()
+        if (url) {
+          currentEditor.chain().setImage({ src: url }).focus().run()
+        }
       })
     },
     onPaste: (currentEditor, files) => {
       files.forEach(async file => {
         const url = await API.uploadImage(file)
-
-        return currentEditor
-          .chain()
-          .setImageBlockAt({ pos: currentEditor.state.selection.anchor, src: url })
-          .focus()
-          .run()
+        if (url) {
+          currentEditor.chain().setImage({ src: url }).focus().run()
+        }
       })
     },
   }),

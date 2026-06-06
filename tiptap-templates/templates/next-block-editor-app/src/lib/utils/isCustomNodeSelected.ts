@@ -28,7 +28,7 @@ export const isCustomNodeSelected = (editor: Editor, node: HTMLElement) => {
     ImageBlock.name,
     ImageUpload.name,
     CodeBlock.name,
-    ImageBlock.name,
+    'image',
     Link.name,
     // AiWriter.name,
     // AiImage.name,

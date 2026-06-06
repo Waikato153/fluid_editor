@@ -1,8 +1,7 @@
+import { Node, mergeAttributes, Range } from '@tiptap/core'
 import { ReactNodeViewRenderer } from '@tiptap/react'
-import { mergeAttributes, Range } from '@tiptap/core'
 
 import { ImageBlockView } from './components/ImageBlockView'
-import { Image } from '../Image'
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -15,8 +14,14 @@ declare module '@tiptap/core' {
   }
 }
 
-export const ImageBlock = Image.extend({
+export const ImageBlock = Node.create({
   name: 'imageBlock',
+
+  addOptions() {
+    return {
+      HTMLAttributes: {},
+    }
+  },
 
   group: 'block',
 
@@ -25,6 +30,8 @@ export const ImageBlock = Image.extend({
   isolating: true,
 
   draggable: true,
+
+  atom: true,
 
   addAttributes() {
     return {
@@ -59,10 +66,12 @@ export const ImageBlock = Image.extend({
     }
   },
 
+  // Only match img tags with data-width (old ImageBlock content)
+  // Regular img tags will be handled by the built-in Image extension
   parseHTML() {
     return [
       {
-        tag: 'img[src*="tiptap.dev"]:not([src^="data:"]), img[src*="windows.net"]:not([src^="data:"])',
+        tag: 'img[data-width]',
       },
     ]
   },

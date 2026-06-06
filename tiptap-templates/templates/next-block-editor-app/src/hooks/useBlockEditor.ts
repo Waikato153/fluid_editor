@@ -72,7 +72,7 @@ export const useBlockEditor = ({
           console.log('After 2s delay - Provider:', provider);
           console.log('After 2s delay - Provider isSynced:', provider?.isSynced);
           console.log('Condition check:', provider && !provider.isSynced);
-          
+
           if (provider && !provider.isSynced) {
             console.log('Provider not synced, waiting for sync event...');
             provider.on('synced', () => {
@@ -232,22 +232,49 @@ export const useBlockEditor = ({
             return false
           },
           keydown(view, event) {
+
             if (isReadOnly) {
-              event.preventDefault()
-              return true
+              // Block Ctrl+A (select all)
+              if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
+                event.preventDefault()
+                return true
+              }
+              // Block all other keyboard input except navigation
+              const allowedKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown']
+              if (!allowedKeys.includes(event.key)) {
+                event.preventDefault()
+                return true
+              }
             }
+            return false
           },
           copy: (view, event) => {
             if (isReadOnly) {
               event.preventDefault()
               return true
             }
+            return false
           },
           cut: (view, event) => {
             if (isReadOnly) {
               event.preventDefault()
               return true
             }
+            return false
+          },
+          paste: (view, event) => {
+            if (isReadOnly) {
+              event.preventDefault()
+              return true
+            }
+            return false
+          },
+          drop: (view, event) => {
+            if (isReadOnly) {
+              event.preventDefault()
+              return true
+            }
+            return false
           },
           click: (view, event) => {
 
@@ -314,17 +341,17 @@ export const useBlockEditor = ({
         console.log('Provider status changed:', event.status);
         setCollabState(event.status)
       })
-      
+
       // 监听同步状态变化
       provider.on('synced', () => {
         console.log('Provider synced event fired');
       })
-      
+
       // 监听连接状态
       provider.on('connect', () => {
         console.log('Provider connected');
       })
-      
+
       provider.on('disconnect', () => {
         console.log('Provider disconnected');
       })

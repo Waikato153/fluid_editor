@@ -139,9 +139,8 @@ export default function Document({ params }: { params: { room: string } }) {
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
     const hashReadOnly = hashParams.get('readonly');
     const isReadOnly = queryReadOnly == '1' || hashReadOnly == '1';
+    
     dispatch(setReadOnly(isReadOnly));
-
-
   }, [searchParams, dispatch]);
 
   // Step 2: Fetch AI token only after fileInfoReady
