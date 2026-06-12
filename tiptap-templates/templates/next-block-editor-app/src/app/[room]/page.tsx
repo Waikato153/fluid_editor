@@ -87,6 +87,12 @@ export default function Document({ params }: { params: { room: string } }) {
         setFileInfoReady(false); // Mark as started
         dispatch(setFileInfoLoading(true));
         dispatch(setFileInfoError(null));
+
+        // Persist the URL/cookie token before making authenticated requests.
+        const token = await API.sendTokenToServer();
+        if (!token) {
+          throw new Error('Authorization Token is required. Please login and try again.');
+        }
         
         // This calls backend /api_document/file, which completes duplication before returning
         const data = await API.getFileInfo(params.room, appId);
@@ -206,21 +212,6 @@ export default function Document({ params }: { params: { room: string } }) {
 
     dataFetch();
   }, [fileInfoReady, fileInfo, fileInfoError]);
-
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const token = await API.sendTokenToServer() as string;
-        if (!token) {
-          dispatch(setFileInfoError('Authorization Token is required. Please login and try again.'));
-        }
-      } catch (error) {
-        console.error('Error fetching token:', error);
-      }
-    };
-
-    fetchToken();
-  }, []);
 
   if (!fileInfoReady || loading || providerState.state === 'loading' || aiToken === undefined|| !fileInfo || convertToken === undefined) {
     return (
